@@ -1,0 +1,133 @@
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  margin: 0;
+}
+
+h1 {
+  font-size: 2.5em;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.container {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 20px;
+  width: 80%;
+  max-width: 600px;
+  text-align: center;
+}
+
+p {
+  color: #333;
+}
+
+label {
+  display: block;
+  margin: 10px 0 5px;
+  font-weight: bold;
+  color: #333;
+}
+
+input[type="file"] {
+  display: none; /* Hidden file input */
+}
+
+button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1em;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-top: 20px;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+#previewButton {
+  display: none;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1em;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-top: 20px;
+}
+
+#previewButton:hover {
+  background-color: #0056b3;
+}
+
+#progressContainer {
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 5px;
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+#progressBar {
+  width: 0;
+  height: 20px;
+  background-color: #4caf50;
+  text-align: center;
+  color: white;
+  line-height: 20px;
+  transition: width 0.3s ease;
+}
+
+#output a {
+  display: block;
+  margin-top: 20px;
+  color: #4caf50;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.drop-zone {
+  border: 2px dashed rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  color: #333;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.drop-zone.dragover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.drop-zone + .drop-zone {
+  margin-left: 20px; /* Add margin between drop zones */
+}
+
+.upload-indicator {
+  margin-top: 10px;
+  font-size: 0.8em;
+  color: rgba(0, 0, 0, 0.6);
+}
