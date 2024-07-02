@@ -265,14 +265,28 @@ document.addEventListener('DOMContentLoaded', () => {
           context.fillStyle = gradient;
           context.fillRect(0, 0, canvas.width, canvas.height);
 
-          if (ratio.addLogo && logoImage) {
-            const logoWidth = Math.min(400, logoImage.width);
-            const logoHeight = logoWidth / logoImage.width * logoImage.height;
-            const logoX = 50;
-            const logoY = canvas.height - logoHeight - 40;
+           if (ratio.addLogo && logoImage) {
+              const maxLogoWidth = canvas.width * 0.8; // Adjust as needed
+              const maxLogoHeight = canvas.height / 2.5; // Adjust as needed
 
-            context.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
-          }
+              let logoWidth = logoImage.width;
+              let logoHeight = logoImage.height;
+
+              // Scale down if necessary to fit within max dimensions
+              if (logoWidth > maxLogoWidth) {
+                logoHeight *= maxLogoWidth / logoWidth;
+                logoWidth = maxLogoWidth;
+              }
+              if (logoHeight > maxLogoHeight) {
+                logoWidth *= maxLogoHeight / logoHeight;
+                logoHeight = maxLogoHeight;
+              }
+
+              const logoX = 50;
+              const logoY = canvas.height - logoHeight - 40;
+
+              context.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
+            }
 
           const blob = await new Promise(resolve => canvas.toBlob(resolve, `image/${ratio.format}`));
           
