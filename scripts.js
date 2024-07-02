@@ -64,8 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const backdropFiles = Array.from(backdropInput.files);
     const logoFiles = Array.from(logoInput.files);
 
-    if (backdropFiles.length !== logoFiles.length) {
-      alert('Please ensure the number of backdrop images matches the number of logo images.');
+    if (backdropFiles.length === 0) {
+      alert('Please upload at least one backdrop image.');
       return;
     }
 
@@ -90,8 +90,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     for (let i = 0; i < backdropFiles.length; i++) {
-      const backdropImage = await loadImage(URL.createObjectURL(backdropFiles[i]));
-      const logoImage = await loadImage(URL.createObjectURL(logoFiles[i]));
+      const backdropFile = backdropFiles[i];
+      const logoFile = logoFiles[i];
+      const backdropName = backdropFile.name.split('.')[0].replace(/ /g, '_'); // Replace spaces with underscores
+
+      let backdropImage;
+      if (backdropFile.type === "image/vnd.adobe.photoshop") {
+        backdropImage = await loadPSD(backdropFile);
+      } else {
+        backdropImage = await loadImage(URL.createObjectURL(backdropFile));
+      }
+
+
+
+      let logoImage = null;
+      if (logoFile) {
+        if (logoFile.type === "image/vnd.adobe.photoshop") {
+          logoImage = await loadPSD(logoFile);
+        } else {
+          logoImage = await loadImage(URL.createObjectURL(logoFile));
+        }
+      }
 
       for (let ratio of ratios) {
         const canvas = document.createElement('canvas');
@@ -99,23 +118,25 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.width = ratio.width;
         canvas.height = ratio.height;
 
-        if (ratio.width === 1280 && ratio.height === 480) {
-          // Add gradient layer for 1280x480 ratio
-          const gradient = context.createLinearGradient(0, 0, canvas.width / 2, 0);
-          gradient.addColorStop(0, 'rgba(1, 0, 0, 1)');
-          
-
-          context.fillStyle = gradient;
-          context.fillRect(0, 0, canvas.width, canvas.height);
-        }
-
         const { topCrop } = await SmartCrop.crop(backdropImage, { width: canvas.width, height: canvas.height });
-
         context.drawImage(backdropImage, topCrop.x, topCrop.y, topCrop.width, topCrop.height, 0, 0, canvas.width, canvas.height);
 
-        if (ratio.addLogo && ratio.width === 1280 && ratio.height === 480) {
-          const logoWidth = Math.min(400, logoImage.width);
-          const logoHeight = logoWidth / logoImage.width * logoImage.height;
+        // Apply gradient
+        const gradient = context.createLinearGradient(0, 0, canvas.width, 0);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0.7)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (ratio.addLogo && logoImage) {
+          let logoWidth = 400;
+          let logoHeight = logoWidth / logoImage.width * logoImage.height;
+
+          if (logoHeight > 180) {
+            logoHeight = 180;
+            logoWidth = logoHeight / logoImage.height * logoImage.width;
+          }
+
           const logoX = 50;
           const logoY = canvas.height - logoHeight - 40;
 
@@ -123,17 +144,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const blob = await new Promise(resolve => canvas.toBlob(resolve, `image/${ratio.format}`));
+
+        // Construct filename with replaced spaces
+        const fileName = `${backdropName}_${ratio.width}${ratio.height}.${ratio.format}`.replace(/ /g, '_');
+
         if (ratio.format === 'webp' && blob.size > 150 * 1024) {
           const reducedQualityBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.7));
-          zip.file(`combined_${i}_${ratio.width}x${ratio.height}.${ratio.format}`, reducedQualityBlob);
+          zip.file(fileName, reducedQualityBlob);
         } else {
-          zip.file(`combined_${i}_${ratio.width}x${ratio.height}.${ratio.format}`, blob);
+          zip.file(fileName, blob);
         }
 
         updateProgress();
 
         if (ratio.width === 1280 && ratio.height === 480) {
-          previewImages.push({ url: URL.createObjectURL(blob), filename: `preview_${i}_${ratio.width}x${ratio.height}.${ratio.format}` });
+          previewImages.push({ url: URL.createObjectURL(blob), filename: fileName });
         }
       }
     }
@@ -152,6 +177,9 @@ document.addEventListener('DOMContentLoaded', () => {
         previewWindow.document.write(`<img src="${image.url}" alt="${image.filename}" style="max-width: 100%; height: auto;" />`);
       });
     });
+
+    // Show the preview button after processing completes
+    previewButton.style.display = 'block';
   });
 
   function loadImage(src) {
@@ -160,6 +188,22 @@ document.addEventListener('DOMContentLoaded', () => {
       img.onload = () => resolve(img);
       img.onerror = reject;
       img.src = src;
+    });
+  }
+
+  function loadPSD(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const psd = PSD.fromArrayBuffer(reader.result);
+        psd.parse();
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = psd.image.toPng().src;
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
     });
   }
 });
