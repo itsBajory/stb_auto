@@ -1,6 +1,6 @@
 body {
   font-family: Arial, sans-serif;
-  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  background: linear-gradient(135deg, #202020 0%, #202020 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -8,13 +8,11 @@ body {
   min-height: 100vh;
   margin: 0;
 }
-
 h1 {
   font-size: 2.5em;
   margin-bottom: 20px;
-  color: #333;
+  color: #DDD;
 }
-
 .container {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 15px;
@@ -27,25 +25,21 @@ h1 {
   max-width: 600px;
   text-align: center;
 }
-
 p {
-  color: #333;
+  color: #DDD;
 }
-
 label {
   display: block;
   margin: 10px 0 5px;
   font-weight: bold;
-  color: #333;
+  color: #DDD;
 }
-
 input[type="file"] {
   display: none; /* Hidden file input */
 }
-
 button {
-  background-color: #4caf50;
-  color: white;
+  background-color: #FFBC00;
+  color: rgb(0, 0, 0);
   border: none;
   padding: 10px 20px;
   font-size: 1em;
@@ -54,28 +48,10 @@ button {
   transition: background-color 0.3s ease;
   margin-top: 20px;
 }
-
 button:hover {
-  background-color: #45a049;
+  background-color: #000000;
+  color: #DDD;
 }
-
-#previewButton {
-  display: none;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  font-size: 1em;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  margin-top: 20px;
-}
-
-#previewButton:hover {
-  background-color: #0056b3;
-}
-
 #progressContainer {
   width: 100%;
   background-color: rgba(255, 255, 255, 0.2);
@@ -84,7 +60,6 @@ button:hover {
   margin-top: 20px;
   overflow: hidden;
 }
-
 #progressBar {
   width: 0;
   height: 20px;
@@ -94,7 +69,6 @@ button:hover {
   line-height: 20px;
   transition: width 0.3s ease;
 }
-
 #output a {
   display: block;
   margin-top: 20px;
@@ -102,13 +76,12 @@ button:hover {
   text-decoration: none;
   font-weight: bold;
 }
-
 .drop-zone {
   border: 2px dashed rgba(255, 255, 255, 0.7);
   border-radius: 10px;
   padding: 20px;
   margin-bottom: 20px;
-  color: #333;
+  color: #DDD;
   cursor: pointer;
   transition: background-color 0.3s ease;
   flex: 1;
@@ -117,17 +90,14 @@ button:hover {
   align-items: center;
   justify-content: center;
 }
-
 .drop-zone.dragover {
   background-color: rgba(255, 255, 255, 0.3);
 }
-
 .drop-zone + .drop-zone {
   margin-left: 20px; /* Add margin between drop zones */
 }
-
 .upload-indicator {
   margin-top: 10px;
   font-size: 0.8em;
-  color: rgba(0, 0, 0, 0.6);
+  color: #DDD;
 }
