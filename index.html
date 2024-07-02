@@ -240,6 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
           backdropImage = await loadImage(URL.createObjectURL(backdropFile));
         }
 
+
+
         let logoImage = null;
         if (logoFile) {
           if (logoFile.type === "image/vnd.adobe.photoshop") {
@@ -266,8 +268,14 @@ document.addEventListener('DOMContentLoaded', () => {
           context.fillRect(0, 0, canvas.width, canvas.height);
 
           if (ratio.addLogo && logoImage) {
-            const logoWidth = Math.min(400, logoImage.width);
-            const logoHeight = logoWidth / logoImage.width * logoImage.height;
+            let logoWidth = 400;
+            let logoHeight = logoWidth / logoImage.width * logoImage.height;
+
+            if (logoHeight > 180) {
+              logoHeight = 180;
+              logoWidth = logoHeight / logoImage.height * logoImage.width;
+            }
+
             const logoX = 50;
             const logoY = canvas.height - logoHeight - 40;
 
