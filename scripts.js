@@ -101,8 +101,6 @@ document.addEventListener('DOMContentLoaded', () => {
         backdropImage = await loadImage(URL.createObjectURL(backdropFile));
       }
 
-
-
       let logoImage = null;
       if (logoFile) {
         if (logoFile.type === "image/vnd.adobe.photoshop") {
@@ -122,11 +120,14 @@ document.addEventListener('DOMContentLoaded', () => {
         context.drawImage(backdropImage, topCrop.x, topCrop.y, topCrop.width, topCrop.height, 0, 0, canvas.width, canvas.height);
 
         // Apply gradient
-        const gradient = context.createLinearGradient(0, 0, canvas.width, 0);
-        gradient.addColorStop(0, 'rgba(0, 0, 0, 0.7)');
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        context.fillStyle = gradient;
-        context.fillRect(0, 0, canvas.width, canvas.height);
+        if (ratio.width === 1280 && ratio.height === 480) {
+          const gradient = context.createLinearGradient(0, 0, 880, 0);
+          gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+          gradient.addColorStop(0.3, 'rgba(0, 0, 0, 1)');
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          context.fillStyle = gradient;
+          context.fillRect(0, 0, canvas.width, canvas.height);
+        }
 
         if (ratio.addLogo && logoImage) {
           let logoWidth = 400;
@@ -140,7 +141,26 @@ document.addEventListener('DOMContentLoaded', () => {
           const logoX = 50;
           const logoY = canvas.height - logoHeight - 40;
 
-          context.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
+          // Create a temporary canvas for the logo to check contrast
+          const logoCanvas = document.createElement('canvas');
+          const logoContext = logoCanvas.getContext('2d');
+          logoCanvas.width = logoWidth;
+          logoCanvas.height = logoHeight;
+          logoContext.drawImage(logoImage, 0, 0, logoWidth, logoHeight);
+          
+          const logoData = logoContext.getImageData(0, 0, logoWidth, logoHeight).data;
+          const backdropData = context.getImageData(logoX, logoY, logoWidth, logoHeight).data;
+
+          let contrast = calculateContrast(logoData, backdropData);
+
+          if (contrast < 2) { // Contrast threshold
+            // Make the logo white
+            logoContext.globalCompositeOperation = 'source-in';
+            logoContext.fillStyle = 'white';
+            logoContext.fillRect(0, 0, logoWidth, logoHeight);
+          }
+
+          context.drawImage(logoCanvas, logoX, logoY, logoWidth, logoHeight);
         }
 
         const blob = await new Promise(resolve => canvas.toBlob(resolve, `image/${ratio.format}`));
@@ -205,5 +225,27 @@ document.addEventListener('DOMContentLoaded', () => {
       reader.onerror = reject;
       reader.readAsArrayBuffer(file);
     });
+  }
+
+  function calculateContrast(logoData, backdropData) {
+    // Simplified contrast calculation for demonstration
+    let logoLuminance = 0;
+    let backdropLuminance = 0;
+    const pixelCount = logoData.length / 4;
+
+    for (let i = 0; i < logoData.length; i += 4) {
+      const logoPixel = (0.299 * logoData[i] + 0.587 * logoData[i + 1] + 0.114 * logoData[i + 2]) / 255;
+      const backdropPixel = (0.299 * backdropData[i] + 0.587 * backdropData[i + 1] + 0.114 * backdropData[i + 2]) / 255;
+      logoLuminance += logoPixel;
+      backdropLuminance += backdropPixel;
+    }
+
+    logoLuminance /= pixelCount;
+    backdropLuminance /= pixelCount;
+
+    const l1 = Math.max(logoLuminance, backdropLuminance);
+    const l2 = Math.min(logoLuminance, backdropLuminance);
+
+    return (l1 + 0.05) / (l2 + 0.05);
   }
 });
