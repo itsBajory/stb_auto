@@ -1,56 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const backdropDropZone = document.getElementById('backdropDropZone');
-  const logoDropZone = document.getElementById('logoDropZone');
   const backdropInput = document.getElementById('backdropInput');
   const logoInput = document.getElementById('logoInput');
   const processButton = document.getElementById('processButton');
   const backdropIndicator = document.getElementById('backdropIndicator');
   const logoIndicator = document.getElementById('logoIndicator');
   const previewButton = document.getElementById('previewButton');
+  const progressBar = document.getElementById('progressBar');
+  const progressStatus = document.getElementById('progressStatus');
+  const output = document.getElementById('output');
 
   const updateIndicator = (indicator, files) => {
     indicator.textContent = `${files.length} file(s) selected`;
   };
-
-  backdropDropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    backdropDropZone.classList.add('dragover');
-  });
-
-  backdropDropZone.addEventListener('dragleave', () => {
-    backdropDropZone.classList.remove('dragover');
-  });
-
-  backdropDropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    backdropDropZone.classList.remove('dragover');
-    backdropInput.files = e.dataTransfer.files;
-    updateIndicator(backdropIndicator, backdropInput.files);
-  });
-
-  logoDropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    logoDropZone.classList.add('dragover');
-  });
-
-  logoDropZone.addEventListener('dragleave', () => {
-    logoDropZone.classList.remove('dragover');
-  });
-
-  logoDropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    logoDropZone.classList.remove('dragover');
-    logoInput.files = e.dataTransfer.files;
-    updateIndicator(logoIndicator, logoInput.files);
-  });
-
-  backdropDropZone.addEventListener('click', () => {
-    backdropInput.click();
-  });
-
-  logoDropZone.addEventListener('click', () => {
-    logoInput.click();
-  });
 
   backdropInput.addEventListener('change', () => {
     updateIndicator(backdropIndicator, backdropInput.files);
@@ -69,6 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    progressStatus.textContent = 'Please wait, processing the images...';
+    progressBar.style.width = '1%';
+    progressBar.textContent = '1%';
+
     const ratios = [
       { width: 240, height: 135, format: 'png', addLogo: false },
       { width: 800, height: 450, format: 'png', addLogo: false },
@@ -77,14 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     const zip = new JSZip();
-    const progressBar = document.getElementById('progressBar');
-    const totalImages = backdropFiles.length;
+    const totalImages = backdropFiles.length * ratios.length;
     let processedCount = 0;
     let previewImages = [];
 
-    function updateProgress() {
-      processedCount++;
-      const percentage = Math.round((processedCount / totalImages) * 100);
+    function updateProgress(percentage) {
       progressBar.style.width = `${percentage}%`;
       progressBar.textContent = `${percentage}%`;
     }
@@ -152,8 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
           const backdropData = context.getImageData(logoX, logoY, logoWidth, logoHeight).data;
 
           let contrast = calculateContrast(logoData, backdropData);
+          let isLogoBlack = checkIfBlack(logoData);
 
-          if (contrast < 2) { // Contrast threshold
+
+          if (contrast < 2 || isLogoBlack) { // Contrast threshold or logo is black
             // Make the logo white
             logoContext.globalCompositeOperation = 'source-in';
             logoContext.fillStyle = 'white';
@@ -175,7 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
           zip.file(fileName, blob);
         }
 
-        updateProgress();
+        processedCount++;
+        const percentage = Math.round((processedCount / totalImages) * 75);
+        updateProgress(percentage);
 
         if (ratio.width === 1280 && ratio.height === 480) {
           previewImages.push({ url: URL.createObjectURL(blob), filename: fileName });
@@ -183,12 +149,18 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    progressStatus.textContent = 'Please wait, we\'re zipping the images for you...';
+
     zip.generateAsync({ type: "blob" }).then(function (content) {
       const link = document.createElement('a');
       link.href = URL.createObjectURL(content);
       link.download = 'processed_images.zip';
       link.innerText = 'Download All Images as Zip';
-      document.getElementById('output').appendChild(link);
+      link.classList.add('btn', 'btn-warning'); // Add the yellow button classes
+      output.appendChild(link);
+
+      updateProgress(100);
+      progressStatus.textContent = 'Processing complete!';
     });
 
     previewButton.addEventListener('click', () => {
@@ -248,4 +220,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     return (l1 + 0.05) / (l2 + 0.05);
   }
+
+  function checkIfBlack(imageData) {
+    let blackPixelCount = 0;
+    const threshold = 10;
+    const pixelCount = imageData.length / 4;
+
+    for (let i = 0; i < imageData.length; i += 4) {
+      const r = imageData[i];
+      const g = imageData[i + 1];
+      const b = imageData[i + 2];
+      if (r < threshold && g < threshold && b < threshold) {
+        blackPixelCount++;
+      }
+    }
+
+    return blackPixelCount / pixelCount > 0.85; // 85% of pixels are black
+  }
+
 });
