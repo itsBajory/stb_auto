@@ -21,9 +21,12 @@
     <span id="logoIndicator" class="upload-indicator">No files selected</span>
   </div>
   <button id="processButton">Process Images</button>
-  <div id="progressContainer">
-    <div id="progressBar"></div>
-  </div>
+
+  <div id="progressBarContainer">
+  <div id="progressBar"></div>
+  <span id="progressStatus"></span>
+</div>
+
   <div id="output"></div>
   <button id="previewButton" style="display:none;">Preview Processed Images</button>
 </div>
@@ -33,7 +36,7 @@
 <!-- Include SmartCrop -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/smartcrop/2.0.5/smartcrop.min.js"></script>
 <!-- Include psd.js -->
-<script src="https://cdn.jsdelivr.net/npm/psd/dist/psd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/psd.js/2.0.0/psd.min.js"></script>
 <script src="scripts.js"></script>
 </body>
 </html>
