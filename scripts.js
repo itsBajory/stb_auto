@@ -67,39 +67,36 @@ document.addEventListener('DOMContentLoaded', async () => {
       progressBar.textContent = `${percentage}%`;
     }
 
-    // Load face-api.js models
-   try{
-    await faceapi.nets.tinyFaceDetector.load('/models');
-    await faceapi.nets.faceLandmark68Net.load('/models'); // Ensure FaceLandmark68Net is loaded
-    }
-    catch (error)
-    {console.error("ggggg",error)}
+   // // Load face-api.js models
+    // await faceapi.nets.tinyFaceDetector.load('/models');
+    // await faceapi.nets.faceLandmark68Net.load('/models'); // Ensure FaceLandmark68Net is loaded
 
-    async function detectFacesAndLandmarks(image) {
-      const detections = await faceapi.detectAllFaces(image, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
-      return detections;
-    }
+    // async function detectFacesAndLandmarks(image) {
+    //   const detections = await faceapi.detectAllFaces(image, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+    //   return detections;
+    // }
 
-    for (let i = 0; i < backdropFiles.length; i++) {
-      const backdropFile = backdropFiles[i];
-      const logoFile = logoFiles[i];
-      const backdropName = backdropFile.name.split('.')[0].replace(/ /g, '_'); // Replace spaces with underscores
+    // for (let i = 0; i < backdropFiles.length; i++) {
+    //   const backdropFile = backdropFiles[i];
+    //   const logoFile = logoFiles[i];
+    //   const backdropName = backdropFile.name.split('.')[0].replace(/ /g, '_'); // Replace spaces with underscores
 
-      const backdropImage = await loadImage(URL.createObjectURL(backdropFile));
+    //   const backdropImage = await loadImage(URL.createObjectURL(backdropFile));
 
-      let logoImage = null;
-      if (logoFile) {
-        logoImage = await loadImage(URL.createObjectURL(logoFile));
-      }
+    //   let logoImage = null;
+    //   if (logoFile) {
+    //     logoImage = await loadImage(URL.createObjectURL(logoFile));
+    //   }
 
-         // Detect faces and landmarks in the backdrop image
-    const detections = await detectFacesAndLandmarks(backdropImage);
+    //      // Detect faces and landmarks in the backdrop image
+    // const detections = await detectFacesAndLandmarks(backdropImage);
 
-    for (let ratio of ratios) {
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      canvas.width = ratio.width;
-      canvas.height = ratio.height;
+    // for (let ratio of ratios) {
+    //   const canvas = document.createElement('canvas');
+    //   const context = canvas.getContext('2d');
+    //   canvas.width = ratio.width;
+    //   canvas.height = ratio.height;
+      
       
       // Calculate aspect ratios
       const backdropAspectRatio = backdropImage.width / backdropImage.height;
