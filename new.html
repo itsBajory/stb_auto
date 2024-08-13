@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Processing Tool</title>
+<style>
+  body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #202020 0%, #202020 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  margin: 0;
+}
+h1 {
+  font-size: 2.5em;
+  margin-bottom: 20px;
+  color: #DDD;
+}
+.container {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 20px;
+  width: 80%;
+  max-width: 600px;
+  text-align: center;
+}
+p {
+  color: #DDD;
+}
+label {
+  display: block;
+  margin: 10px 0 5px;
+  font-weight: bold;
+  color: #DDD;
+}
+input[type="file"] {
+  display: none; /* Hidden file input */
+}
+button {
+  background-color: #FFBC00;
+  color: rgb(0, 0, 0);
+  border: none;
+  padding: 10px 20px;
+  font-size: 1em;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-top: 20px;
+}
+button:hover {
+  background-color: #000000;
+  color: #DDD;
+}
+#progressContainer {
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 5px;
+  margin-top: 20px;
+  overflow: hidden;
+}
+#progressBar {
+  width: 0;
+  height: 20px;
+  background-color: #4caf50;
+  text-align: center;
+  color: white;
+  line-height: 20px;
+  transition: width 0.3s ease;
+}
+#output a {
+  display: block;
+  margin-top: 20px;
+  color: #000000;
+  text-decoration: none;
+  font-weight: bold;
+  background-color: #ffbc00;
+  padding: 20px 40px;
+  border-radius: 12px;
+}
+
+.drop-zone {
+  border: 2px dashed rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  color: #DDD;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.drop-zone.dragover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+.drop-zone + .drop-zone {
+  margin-left: 20px; /* Add margin between drop zones */
+}
+.upload-indicator {
+  margin-top: 10px;
+  font-size: 0.8em;
+  color: #DDD;
+}
+</style>
+</head>
+<body>
+  <div id="backdropDropZone" class="drop-zone">Drop backdrops here</div>
+  <div id="logoDropZone" class="drop-zone">Drop logos here</div>
+  <button id="processButton">Process Images</button>
+  <button id="previewButton" style="display: none;">Preview Images</button>
+  <div id="progressBarContainer">
+    <div id="progressBar"></div>
+  </div>
+  <div id="progressStatus"></div>
+  <div id="output"></div>
+
+  <!-- Include face-api.js and JSZip -->
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api-without-tensorflow@1.0.0/build/commonjs/index.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const backdropDropZone = document.getElementById('backdropDropZone');
+      const logoDropZone = document.getElementById('logoDropZone');
+      const processButton = document.getElementById('processButton');
+      const backdropIndicator = document.createElement('div');
+      const logoIndicator = document.createElement('div');
+      const previewButton = document.getElementById('previewButton');
+      const progressBar = document.getElementById('progressBar');
+      const progressStatus = document.getElementById('progressStatus');
+      const output = document.getElementById('output');
+
+      const updateIndicator = (indicator, files) => {
+        indicator.textContent = `${files.length} file(s) selected`;
+      };
+
+      const handleFileDrop = (dropZone, indicator) => {
+        dropZone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+          dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          dropZone.classList.remove('dragover');
+          
+          const files = e.dataTransfer.files;
+          updateIndicator(indicator, files);
+          dropZone.files = files; // Store files in the drop zone element for easy access
+        });
+      };
+
+      handleFileDrop(backdropDropZone, backdropIndicator);
+      handleFileDrop(logoDropZone, logoIndicator);
+
+      processButton.addEventListener('click', async () => {
+        const backdropFiles = Array.from(backdropDropZone.files || []);
+        const logoFiles = Array.from(logoDropZone.files || []);
+        
+        if (backdropFiles.length === 0) {
+          alert('Please upload at least one backdrop image.');
+          return;
+        }
+
+        progressStatus.textContent = 'Please wait, processing the images...';
+        progressBar.style.width = '1%';
+        progressBar.textContent = '1%';
+
+        const ratios = [
+          { width: 240, height: 135, format: 'png', addLogo: false },
+          { width: 800, height: 450, format: 'png', addLogo: false },
+          { width: 1280, height: 480, format: 'png', addLogo: true },
+          { width: 640, height: 360, format: 'webp', addLogo: false }
+        ];
+
+        const zip = new JSZip();
+        const totalImages = backdropFiles.length * ratios.length;
+        let processedCount = 0;
+        let previewImages = [];
+
+        function updateProgress(percentage) {
+          progressBar.style.width = `${percentage}%`;
+          progressBar.textContent = `${percentage}%`;
+        }
+
+        // Load face-api.js models
+        await faceapi.nets.tinyFaceDetector.load('/models');
+        await faceapi.nets.faceLandmark68Net.load('/models'); // Ensure FaceLandmark68Net is loaded
+
+        async function detectFacesAndLandmarks(image) {
+          const detections = await faceapi.detectAllFaces(image, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+          return detections;
+        }
+
+        function loadImage(src) {
+          return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = src;
+          });
+        }
+
+        for (let i = 0; i < backdropFiles.length; i++) {
+          const backdropFile = backdropFiles[i];
+          const logoFile = logoFiles[i];
+          const backdropName = backdropFile.name.split('.')[0].replace(/ /g, '_'); // Replace spaces with underscores
+
+          const backdropImage = await loadImage(URL.createObjectURL(backdropFile));
+
+          let logoImage = null;
+          if (logoFile) {
+            logoImage = await loadImage(URL.createObjectURL(logoFile));
+          }
+
+          // Detect faces and landmarks in the backdrop image
+          const detections = await detectFacesAndLandmarks(backdropImage);
+
+          for (let ratio of ratios) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = ratio.width;
+            canvas.height = ratio.height;
+
+            // Calculate scaling factor to fill the canvas
+            const scaleFactor = Math.max(canvas.width / backdropImage.width, canvas.height / backdropImage.height);
+            const drawWidth = backdropImage.width * scaleFactor;
+            const drawHeight = backdropImage.height * scaleFactor;
+            const offsetX = (canvas.width - drawWidth) / 2;
+            const offsetY = (canvas.height - drawHeight) / 2;
+
+            // Draw the backdrop image on the canvas, filling the entire canvas area
+            context.drawImage(backdropImage, offsetX, offsetY, drawWidth, drawHeight);
+
+            // Apply gradient
+            if (ratio.width === 1280 && ratio.height === 480) {
+              const gradient = context.createLinearGradient(0, 0, 880, 0);
+              gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+              gradient.addColorStop(0.3, 'rgba(0, 0, 0, 1)');
+              gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+              context.fillStyle = gradient;
+              context.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            if (ratio.addLogo && logoImage) {
+              let logoWidth = 400;
+              let logoHeight = logoWidth / logoImage.width * logoImage.height;
+
+              if (logoHeight > 180) {
+                logoHeight = 180;
+                logoWidth = logoHeight / logoImage.height * logoImage.width;
+              }
+
+              const logoX = 50;
+              const logoY = canvas.height - logoHeight - 40;
+
+              // Create a temporary canvas for the logo to check contrast
+              const logoCanvas = document.createElement('canvas');
+              const logoContext = logoCanvas.getContext('2d');
+              logoCanvas.width = logoWidth;
+              logoCanvas.height = logoHeight;
+              logoContext.drawImage(logoImage, 0, 0, logoWidth, logoHeight);
+
+              const logoData = logoContext.getImageData(0, 0, logoWidth, logoHeight).data;
+              const backdropData = context.getImageData(logoX, logoY, logoWidth, logoHeight).data;
+
+              let contrast = calculateContrast(logoData, backdropData);
+              let isLogoBlack = checkIfBlack(logoData);
+
+              if (contrast < 2 || isLogoBlack) { // Contrast threshold or logo is black
+                // Make the logo white
+                logoContext.globalCompositeOperation = 'source-in';
+                logoContext.fillStyle = 'white';
+                logoContext.fillRect(0, 0, logoWidth, logoHeight);
+              }
+
+              context.drawImage(logoCanvas, logoX, logoY, logoWidth, logoHeight);
+            }
+
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, `image/${ratio.format}`));
+
+            // Add image to the ZIP file
+            zip.file(`${backdropName}_${ratio.width}x${ratio.height}.${ratio.format}`, blob);
+
+            // Add to preview images
+            const previewURL = URL.createObjectURL(blob);
+            previewImages.push(previewURL);
+
+            processedCount++;
+            const percentage = Math.round((processedCount / totalImages) * 100);
+            updateProgress(percentage);
+          }
+        }
+
+        // Generate ZIP file and trigger download
+        zip.generateAsync({ type: 'blob' }).then((content) => {
+          const zipURL = URL.createObjectURL(content);
+          output.innerHTML = `<a href="${zipURL}" download="images.zip" class="btn-warning">Download ZIP</a>`;
+          previewButton.style.display = 'block';
+
+          // Set up preview button functionality
+          previewButton.addEventListener('click', () => {
+            output.innerHTML = '';
+            previewImages.forEach(src => {
+              const img = document.createElement('img');
+              img.src = src;
+              img.style.maxWidth = '100%';
+              output.appendChild(img);
+            });
+          });
+
+          progressStatus.textContent = 'Processing complete!';
+        });
+      });
+
+      function calculateContrast(data1, data2) {
+        let totalDifference = 0;
+        let count = 0;
+
+        for (let i = 0; i < data1.length; i += 4) {
+          const r1 = data1[i];
+          const g1 = data1[i + 1];
+          const b1 = data1[i + 2];
+          const r2 = data2[i];
+          const g2 = data2[i + 1];
+          const b2 = data2[i + 2];
+
+          const diff = Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2);
+          totalDifference += diff;
+          count++;
+        }
+
+        return totalDifference / count;
+      }
+
+      function checkIfBlack(data) {
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          if (r < 50 && g < 50 && b < 50) { // A simple threshold to detect black color
+            return true;
+          }
+        }
+        return false;
+      }
+    });
+  </script>
+</body>
+</html>

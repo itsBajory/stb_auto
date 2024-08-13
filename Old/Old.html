@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Processing Tool</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+  }
+  h1 {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+    color: #333;
+  }
+  .container {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 20px;
+    width: 80%;
+    max-width: 600px;
+    text-align: center;
+  }
+  p {
+    color: #333;
+  }
+  label {
+    display: block;
+    margin: 10px 0 5px;
+    font-weight: bold;
+    color: #333;
+  }
+  input[type="file"] {
+    display: none; /* Hidden file input */
+  }
+  button {
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1em;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 20px;
+  }
+  button:hover {
+    background-color: #45a049;
+  }
+  #progressContainer {
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 5px;
+    margin-top: 20px;
+    overflow: hidden;
+  }
+  #progressBar {
+    width: 0;
+    height: 20px;
+    background-color: #4caf50;
+    text-align: center;
+    color: white;
+    line-height: 20px;
+    transition: width 0.3s ease;
+  }
+  #output a {
+    display: block;
+    margin-top: 20px;
+    color: #4caf50;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  .drop-zone {
+    border: 2px dashed rgba(255, 255, 255, 0.7);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    color: #333;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .drop-zone.dragover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+  .drop-zone + .drop-zone {
+    margin-left: 20px; /* Add margin between drop zones */
+  }
+  .upload-indicator {
+    margin-top: 10px;
+    font-size: 0.8em;
+    color: rgba(0, 0, 0, 0.6);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Image Processing Tool</h1>
+  <div class="drop-zone" id="backdropDropZone">
+    <label for="backdropInput">Drop or Click to Upload Backdrop Image(s)</label>
+    <input type="file" id="backdropInput" multiple>
+    <span id="backdropIndicator" class="upload-indicator">No files selected</span>
+  </div>
+  <div class="drop-zone" id="logoDropZone">
+    <label for="logoInput">Drop or Click to Upload Logo Image(s)</label>
+    <input type="file" id="logoInput" multiple>
+    <span id="logoIndicator" class="upload-indicator">No files selected</span>
+  </div>
+  <button id="processButton">Process Images</button>
+  <div id="progressContainer">
+    <div id="progressBar"></div>
+  </div>
+  <div id="output"></div>
+  <button id="previewButton" style="display:none;">Preview Processed Images</button>
+</div>
+
+<!-- Include JSZip -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+<!-- Include SmartCrop -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/smartcrop/2.0.5/smartcrop.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const backdropDropZone = document.getElementById('backdropDropZone');
+    const logoDropZone = document.getElementById('logoDropZone');
+    const backdropInput = document.getElementById('backdropInput');
+    const logoInput = document.getElementById('logoInput');
+    const processButton = document.getElementById('processButton');
+    const backdropIndicator = document.getElementById('backdropIndicator');
+    const logoIndicator = document.getElementById('logoIndicator');
+    const previewButton = document.getElementById('previewButton');
+
+    const updateIndicator = (indicator, files) => {
+      indicator.textContent = `${files.length} file(s) selected`;
+    };
+
+    backdropDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      backdropDropZone.classList.add('dragover');
+    });
+
+    backdropDropZone.addEventListener('dragleave', () => {
+      backdropDropZone.classList.remove('dragover');
+    });
+
+    backdropDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      backdropDropZone.classList.remove('dragover');
+      backdropInput.files = e.dataTransfer.files;
+      updateIndicator(backdropIndicator, backdropInput.files);
+    });
+
+    logoDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      logoDropZone.classList.add('dragover');
+    });
+
+    logoDropZone.addEventListener('dragleave', () => {
+      logoDropZone.classList.remove('dragover');
+    });
+
+    logoDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      logoDropZone.classList.remove('dragover');
+      logoInput.files = e.dataTransfer.files;
+      updateIndicator(logoIndicator, logoInput.files);
+    });
+
+    backdropDropZone.addEventListener('click', () => {
+      backdropInput.click();
+    });
+
+    logoDropZone.addEventListener('click', () => {
+      logoInput.click();
+    });
+
+    backdropInput.addEventListener('change', () => {
+      updateIndicator(backdropIndicator, backdropInput.files);
+    });
+
+    logoInput.addEventListener('change', () => {
+      updateIndicator(logoIndicator, logoInput.files);
+    });
+
+    processButton.addEventListener('click', async () => {
+      const backdropFiles = Array.from(backdropInput.files);
+      const logoFiles = Array.from(logoInput.files);
+
+      if (backdropFiles.length !== logoFiles.length) {
+        alert('Please ensure the number of backdrop images matches the number of logo images.');
+        return;
+      }
+
+      const ratios = [
+        { width: 240, height: 135, format: 'png', addLogo: false },
+        { width: 800, height: 450, format: 'png', addLogo: false },
+        { width: 1280, height: 480, format: 'png', addLogo: true },
+        { width: 640, height: 360, format: 'webp', addLogo: false }
+      ];
+
+      const zip = new JSZip();
+      const progressBar = document.getElementById('progressBar');
+      const totalImages = backdropFiles.length;
+      let processedCount = 0;
+      let previewImages = [];
+
+      function updateProgress() {
+        processedCount++;
+        const percentage = Math.round((processedCount / totalImages) * 100);
+        progressBar.style.width = `${percentage}%`;
+        progressBar.textContent = `${percentage}%`;
+      }
+
+      for (let i = 0; i < backdropFiles.length; i++) {
+        const backdropImage = await loadImage(URL.createObjectURL(backdropFiles[i]));
+        const logoImage = await loadImage(URL.createObjectURL(logoFiles[i]));
+
+        for (let ratio of ratios) {
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.width = ratio.width;
+          canvas.height = ratio.height;
+
+          // Apply gradient to all images
+          const gradient = context.createLinearGradient(0, 0, canvas.width / 2, 0);
+          gradient.addColorStop(0, 'rgba(1, 0, 0, 0.5)');
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          context.fillStyle = gradient;
+          context.fillRect(0, 0, canvas.width, canvas.height);
+
+          const { topCrop } = await SmartCrop.crop(backdropImage, { width: canvas.width, height: canvas.height });
+
+          context.drawImage(backdropImage, topCrop.x, topCrop.y, topCrop.width, topCrop.height, 0, 0, canvas.width, canvas.height);
+
+          if (ratio.addLogo && ratio.width === 1280 && ratio.height === 480) {
+            const logoWidth = Math.min(400, logoImage.width);
+            const logoHeight = logoWidth / logoImage.width * logoImage.height;
+            const logoX = 50;
+            const logoY = canvas.height - logoHeight - 40;
+
+            context.drawImage(logoImage, logoX, logoY, logoWidth, logoHeight);
+          }
+
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, `image/${ratio.format}`));
+          if (ratio.format === 'webp' && blob.size > 150 * 1024) {
+            const reducedQualityBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', 0.7));
+            zip.file(`combined_${i}_${ratio.width}x${ratio.height}.${ratio.format}`, reducedQualityBlob);
+          } else {
+            zip.file(`combined_${i}_${ratio.width}x${ratio.height}.${ratio.format}`, blob);
+          }
+
+          updateProgress();
+
+          if (ratio.width === 1280 && ratio.height === 480) {
+            previewImages.push({ url: URL.createObjectURL(blob), filename: `preview_${i}_${ratio.width}x${ratio.height}.${ratio.format}` });
+          }
+        }
+      }
+
+      zip.generateAsync({ type: "blob" }).then(function (content) {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = 'processed_images.zip';
+        link.innerText = 'Download All Images as Zip';
+        document.getElementById('output').appendChild(link);
+      });
+
+      previewButton.addEventListener('click', () => {
+        previewImages.forEach(image => {
+          const previewWindow = window.open();
+          previewWindow.document.write(`<img src="${image.url}" alt="${image.filename}" style="max-width: 100%; height: auto;" />`);
+        });
+      });
+
+      // Show the preview button after processing completes
+      previewButton.style.display = 'block';
+    });
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+  });
+</script>
+</body>
+</html>
