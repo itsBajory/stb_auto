@@ -68,8 +68,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Load face-api.js models
+   try{
     await faceapi.nets.tinyFaceDetector.load('/models');
     await faceapi.nets.faceLandmark68Net.load('/models'); // Ensure FaceLandmark68Net is loaded
+    }
+    catch (error)
+    {console.error("ggggg",error)}
 
     async function detectFacesAndLandmarks(image) {
       const detections = await faceapi.detectAllFaces(image, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
