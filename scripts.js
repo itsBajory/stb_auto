@@ -1,6 +1,6 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const backdropInput = document.getElementById('backdropInput');
-  const logoInput = document.getElementById('logoInput');
+document.addEventListener('DOMContentLoaded', async () => {
+  const backdropDropZone = document.getElementById('backdropDropZone');
+  const logoDropZone = document.getElementById('logoDropZone');
   const processButton = document.getElementById('processButton');
   const backdropIndicator = document.getElementById('backdropIndicator');
   const logoIndicator = document.getElementById('logoIndicator');
@@ -13,17 +13,33 @@ document.addEventListener('DOMContentLoaded', () => {
     indicator.textContent = `${files.length} file(s) selected`;
   };
 
-  backdropInput.addEventListener('change', () => {
-    updateIndicator(backdropIndicator, backdropInput.files);
-  });
+  // Function to handle file drop
+  const handleFileDrop = (dropZone, indicator) => {
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
 
-  logoInput.addEventListener('change', () => {
-    updateIndicator(logoIndicator, logoInput.files);
-  });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+
+      const files = e.dataTransfer.files;
+      updateIndicator(indicator, files);
+      dropZone.files = files; // Store files in the drop zone element for easy access
+    });
+  };
+
+  handleFileDrop(backdropDropZone, backdropIndicator);
+  handleFileDrop(logoDropZone, logoIndicator);
 
   processButton.addEventListener('click', async () => {
-    const backdropFiles = Array.from(backdropInput.files);
-    const logoFiles = Array.from(logoInput.files);
+    const backdropFiles = Array.from(backdropDropZone.files || []);
+    const logoFiles = Array.from(logoDropZone.files || []);
 
     if (backdropFiles.length === 0) {
       alert('Please upload at least one backdrop image.');
@@ -51,41 +67,65 @@ document.addEventListener('DOMContentLoaded', () => {
       progressBar.textContent = `${percentage}%`;
     }
 
+    // Load face-api.js models
+    await faceapi.nets.tinyFaceDetector.load('/models');
+    await faceapi.nets.faceLandmark68Net.load('/models'); // Ensure FaceLandmark68Net is loaded
+
+    async function detectFacesAndLandmarks(image) {
+      const detections = await faceapi.detectAllFaces(image, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+      return detections;
+    }
+
     for (let i = 0; i < backdropFiles.length; i++) {
       const backdropFile = backdropFiles[i];
       const logoFile = logoFiles[i];
       const backdropName = backdropFile.name.split('.')[0].replace(/ /g, '_'); // Replace spaces with underscores
 
-      let backdropImage;
-      if (backdropFile.type === "image/vnd.adobe.photoshop") {
-        backdropImage = await loadPSD(backdropFile);
-      } else {
-        backdropImage = await loadImage(URL.createObjectURL(backdropFile));
-      }
+      const backdropImage = await loadImage(URL.createObjectURL(backdropFile));
 
       let logoImage = null;
       if (logoFile) {
-        if (logoFile.type === "image/vnd.adobe.photoshop") {
-          logoImage = await loadPSD(logoFile);
-        } else {
-          logoImage = await loadImage(URL.createObjectURL(logoFile));
-        }
+        logoImage = await loadImage(URL.createObjectURL(logoFile));
       }
 
-      for (let ratio of ratios) {
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.width = ratio.width;
-        canvas.height = ratio.height;
+         // Detect faces and landmarks in the backdrop image
+    const detections = await detectFacesAndLandmarks(backdropImage);
 
-        const { topCrop } = await SmartCrop.crop(backdropImage, { width: canvas.width, height: canvas.height });
-        context.drawImage(backdropImage, topCrop.x, topCrop.y, topCrop.width, topCrop.height, 0, 0, canvas.width, canvas.height);
-
-        // Apply gradient
+    for (let ratio of ratios) {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = ratio.width;
+      canvas.height = ratio.height;
+      
+      // Calculate aspect ratios
+      const backdropAspectRatio = backdropImage.width / backdropImage.height;
+      const canvasAspectRatio = ratio.width / ratio.height;
+      
+      let drawWidth, drawHeight;
+      let offsetX = 0, offsetY = 0;
+      
+      if (backdropAspectRatio > canvasAspectRatio) {
+          // Image is wider relative to its height
+          drawWidth = canvas.width;
+          drawHeight = drawWidth / backdropAspectRatio;
+          offsetY = (canvas.height - drawHeight) / 2; // Center vertically
+      } else {
+          // Image is taller relative to its width
+          drawHeight = canvas.height;
+          drawWidth = drawHeight * backdropAspectRatio;
+          offsetX = (canvas.width - drawWidth); // Align to the right side
+      }
+      
+      // Draw the image on the canvas to fill the canvas completely
+      context.drawImage(backdropImage, 0, 0, backdropImage.width, backdropImage.height, 
+                        offsetX, offsetY, drawWidth, drawHeight);
+      
+      
+         // Apply gradient
         if (ratio.width === 1280 && ratio.height === 480) {
           const gradient = context.createLinearGradient(0, 0, 880, 0);
           gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
-          gradient.addColorStop(0.3, 'rgba(0, 0, 0, 1)');
+          gradient.addColorStop(0.5, 'rgba(0, 0, 0, 1)');
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           context.fillStyle = gradient;
           context.fillRect(0, 0, canvas.width, canvas.height);
@@ -109,13 +149,12 @@ document.addEventListener('DOMContentLoaded', () => {
           logoCanvas.width = logoWidth;
           logoCanvas.height = logoHeight;
           logoContext.drawImage(logoImage, 0, 0, logoWidth, logoHeight);
-          
+
           const logoData = logoContext.getImageData(0, 0, logoWidth, logoHeight).data;
           const backdropData = context.getImageData(logoX, logoY, logoWidth, logoHeight).data;
 
           let contrast = calculateContrast(logoData, backdropData);
           let isLogoBlack = checkIfBlack(logoData);
-
 
           if (contrast < 2 || isLogoBlack) { // Contrast threshold or logo is black
             // Make the logo white
@@ -183,22 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function loadPSD(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const psd = PSD.fromArrayBuffer(reader.result);
-        psd.parse();
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = psd.image.toPng().src;
-      };
-      reader.onerror = reject;
-      reader.readAsArrayBuffer(file);
-    });
-  }
-
   function calculateContrast(logoData, backdropData) {
     // Simplified contrast calculation for demonstration
     let logoLuminance = 0;
@@ -223,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function checkIfBlack(imageData) {
     let blackPixelCount = 0;
-    const threshold = 10;
+    const threshold = 4;
     const pixelCount = imageData.length / 4;
 
     for (let i = 0; i < imageData.length; i += 4) {
